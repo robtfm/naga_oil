@@ -495,8 +495,10 @@ impl Composer {
                         name: None,
                         inner: naga::TypeInner::Vector {
                             size: naga::VectorSize::Quad,
-                            kind: naga::ScalarKind::Float,
-                            width: 4,
+                            scalar: naga::Scalar {
+                                kind: naga::ScalarKind::Float,
+                                width: 4,
+                            },
                         },
                     },
                     naga::Span::UNDEFINED,
