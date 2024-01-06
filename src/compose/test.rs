@@ -5,6 +5,7 @@ mod test {
     use std::io::Write;
     use std::{borrow::Cow, collections::HashMap};
 
+    use naga::valid::Capabilities;
     use wgpu::{
         BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
         BufferDescriptor, BufferUsages, CommandEncoderDescriptor, ComputePassDescriptor,
@@ -1407,6 +1408,96 @@ mod test {
 
             assert_eq!(test_shader(&mut composer), expected);
         }
+    }
+
+    #[test]
+    fn test_raycast() {
+        let mut composer = Composer::non_validating().with_capabilities(Capabilities::all());
+        let module = r"
+
+@group(0) @binding(0) var tlas: acceleration_structure;
+
+fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ray_t_max: f32) -> RayIntersection {
+    let ray_flags = RAY_FLAG_NONE;
+    let ray_cull_mask = 0xFFu;
+    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
+
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    return rayQueryGetCommittedIntersection(&rq);
+}
+
+        ";
+
+        composer
+            .add_composable_module(ComposableModuleDescriptor {
+                source: module,
+                file_path: "module",
+                as_name: Some("module".to_owned()),
+                ..Default::default()
+            })
+            .unwrap();
+
+        let top = r"
+
+#import module::trace_ray
+
+@fragment
+fn main() {
+    let intersection = trace_ray(vec3(0.0), vec3(1.0, 0.0, 0.0), 0.0, 1.0);
+}
+
+        ";
+
+        let oiled = composer
+            .make_naga_module(NagaModuleDescriptor {
+                source: top,
+                file_path: "top",
+                shader_type: ShaderType::Wgsl,
+                ..Default::default()
+            })
+            .unwrap();
+
+        let total = r"
+
+@group(0) @binding(0) var tlas: acceleration_structure;
+
+fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ray_t_max: f32) -> RayIntersection {
+    let ray_flags = RAY_FLAG_NONE;
+    let ray_cull_mask = 0xFFu;
+    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
+
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    return rayQueryGetCommittedIntersection(&rq);
+}
+
+@fragment
+fn main() {
+    let intersection = trace_ray(vec3(0.0), vec3(1.0, 0.0, 0.0), 0.0, 1.0);
+}
+
+        ";
+        let unoiled = naga::front::wgsl::parse_str(total).unwrap();
+
+        println!("oiled: {oiled:#?}");
+        println!("unoiled: {unoiled:#?}");
+
+        let oiled_info =
+            naga::valid::Validator::new(naga::valid::ValidationFlags::all(), Capabilities::all())
+                .validate(&oiled)
+                .unwrap();
+        let spv = naga::back::spv::write_vec(
+            &oiled,
+            &oiled_info,
+            &naga::back::spv::Options::default(),
+            None,
+        )
+        .unwrap();
+
+        println!("{:?}", spv);
     }
 
     // actually run a shader and extract the result

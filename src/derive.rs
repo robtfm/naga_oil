@@ -2,9 +2,10 @@ use indexmap::IndexMap;
 use naga::{
     Arena, AtomicFunction, Block, Constant, EntryPoint, Expression, Function, FunctionArgument,
     FunctionResult, GlobalVariable, Handle, ImageQuery, LocalVariable, Module, SampleLevel, Span,
-    Statement, StructMember, SwitchCase, Type, TypeInner, UniqueArena,
+    SpecialTypes, Statement, StructMember, SwitchCase, Type, TypeInner, UniqueArena,
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use tracing::warn;
 
 use crate::compose::util::expression_eq;
 
@@ -24,6 +25,7 @@ pub struct DerivedModule<'a> {
     const_expressions: Rc<RefCell<Arena<Expression>>>,
     globals: Arena<GlobalVariable>,
     functions: Arena<Function>,
+    special_types: SpecialTypes,
 }
 
 impl<'a> DerivedModule<'a> {
@@ -36,6 +38,8 @@ impl<'a> DerivedModule<'a> {
 
     // detach source context
     pub fn clear_shader_source(&mut self) {
+        self.import_special_types();
+
         self.shader = None;
         self.type_map.clear();
         self.const_map.clear();
@@ -722,7 +726,39 @@ impl<'a> DerivedModule<'a> {
         self.import_function(func, span)
     }
 
+    fn import_special_types(&mut self) {
+        let Some(shader) = self.shader.as_ref() else {
+            return;
+        };
+
+        if let Some(ray_desc) = shader.special_types.ray_desc {
+            if let Some(new_ray_desc) = self.type_map.get(&ray_desc) {
+                if let Some(existing) = self.special_types.ray_desc.as_ref() {
+                    if existing != new_ray_desc {
+                        warn!("conflicting RayDesc types");
+                    }
+                } else {
+                    self.special_types.ray_desc = Some(*new_ray_desc);
+                }
+            }
+        }
+
+        if let Some(ray_int) = shader.special_types.ray_intersection {
+            if let Some(new_ray_int) = self.type_map.get(&ray_int) {
+                if let Some(existing) = self.special_types.ray_intersection.as_ref() {
+                    if existing != new_ray_int {
+                        warn!("conflicting RayIntersection types");
+                    }
+                } else {
+                    self.special_types.ray_intersection = Some(*new_ray_int);
+                }
+            }
+        }
+    }
+
     pub fn into_module_with_entrypoints(mut self) -> naga::Module {
+        self.import_special_types();
+
         let entry_points = self
             .shader
             .unwrap()
@@ -754,7 +790,7 @@ impl<'a> From<DerivedModule<'a>> for naga::Module {
                 .unwrap()
                 .into_inner(),
             functions: derived.functions,
-            special_types: Default::default(),
+            special_types: derived.special_types,
             entry_points: Default::default(),
         }
     }
