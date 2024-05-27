@@ -1583,12 +1583,7 @@ impl Composer {
 
         let sanitized_source = self.sanitize_and_set_auto_bindings(source);
 
-        let PreprocessorMetaData {
-            name,
-            defines,
-            imports,
-            ..
-        } = self
+        let PreprocessorMetaData { name, defines, .. } = self
             .preprocessor
             .get_preprocessor_metadata(&sanitized_source, true)
             .map_err(|inner| ComposerError {
@@ -1602,6 +1597,21 @@ impl Composer {
         shader_defs.extend(defines);
 
         let name = name.unwrap_or_default();
+
+        let PreprocessOutput {
+            preprocessed_source,
+            imports,
+        } = self
+            .preprocessor
+            .preprocess(&sanitized_source, &shader_defs, self.validate)
+            .map_err(|inner| ComposerError {
+                inner,
+                source: ErrSource::Constructing {
+                    path: file_path.to_owned(),
+                    source: sanitized_source.to_owned(),
+                    offset: 0,
+                },
+            })?;
 
         // make sure imports have been added
         // and gather additional defs specified at module level
@@ -1670,21 +1680,6 @@ impl Composer {
             shader_defs: Default::default(),
             modules: Default::default(),
         };
-
-        let PreprocessOutput {
-            preprocessed_source,
-            imports,
-        } = self
-            .preprocessor
-            .preprocess(&sanitized_source, &shader_defs, self.validate)
-            .map_err(|inner| ComposerError {
-                inner,
-                source: ErrSource::Constructing {
-                    path: file_path.to_owned(),
-                    source: sanitized_source,
-                    offset: 0,
-                },
-            })?;
 
         let composable = self
             .create_composable_module(
