@@ -909,7 +909,7 @@ impl<'a> DerivedModule<'a> {
                 function: self.localize_function(&ep.function),
                 workgroup_size_overrides: ep.workgroup_size_overrides,
                 mesh_info: None,
-                task_payload: None
+                task_payload: None,
             })
             .collect();
 

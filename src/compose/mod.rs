@@ -534,7 +534,7 @@ impl Composer {
                     workgroup_size: [0, 0, 0],
                     workgroup_size_overrides: None,
                     mesh_info: None,
-                    task_payload: None
+                    task_payload: None,
                 };
 
                 naga_module.entry_points.push(ep);
@@ -1837,7 +1837,7 @@ impl Composer {
                 workgroup_size: ep.workgroup_size,
                 workgroup_size_overrides: ep.workgroup_size_overrides,
                 mesh_info: None,
-                task_payload: None
+                task_payload: None,
             });
         }
         let mut naga_module = naga::Module {
