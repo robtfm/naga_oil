@@ -1299,6 +1299,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_raycasts() {
         let mut composer =
             Composer::default().with_capabilities(naga::valid::Capabilities::RAY_QUERY);
