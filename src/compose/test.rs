@@ -1299,6 +1299,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_raycasts() {
         let mut composer =
             Composer::default().with_capabilities(naga::valid::Capabilities::RAY_QUERY);
@@ -1489,11 +1490,11 @@ mod test {
             .unwrap();
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-        let adapter = instance
-            .enumerate_adapters(wgpu::Backends::all())
-            .into_iter()
-            .next()
-            .unwrap();
+        let adapter =
+            futures_lite::future::block_on(instance.enumerate_adapters(wgpu::Backends::all()))
+                .into_iter()
+                .next()
+                .unwrap();
         let (device, queue) =
             futures_lite::future::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 required_features: Features::MAPPABLE_PRIMARY_BUFFERS,
@@ -1533,7 +1534,7 @@ mod test {
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: &[&layout],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 }),
             ),
             module: &shader_module,

@@ -1,3 +1,5 @@
+enable wgpu_ray_query;
+
 #import test_module
 
 fn main() -> f32 {

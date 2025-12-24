@@ -140,11 +140,11 @@ fn test_compose_final_module(n: usize, composer: &mut Composer) {
 // make shader module from string
 fn test_wgsl_string_compile(n: usize) {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-    let adapter = instance
-        .enumerate_adapters(wgpu::Backends::all())
-        .into_iter()
-        .next()
-        .unwrap();
+    let adapter =
+        futures_lite::future::block_on(instance.enumerate_adapters(wgpu::Backends::all()))
+            .into_iter()
+            .next()
+            .unwrap();
     let device =
         futures_lite::future::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
             .unwrap()
@@ -163,11 +163,11 @@ fn test_wgsl_string_compile(n: usize) {
 // make shader module from composed naga
 fn test_composer_compile(n: usize, composer: &mut Composer) {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-    let adapter = instance
-        .enumerate_adapters(wgpu::Backends::all())
-        .into_iter()
-        .next()
-        .unwrap();
+    let adapter =
+        futures_lite::future::block_on(instance.enumerate_adapters(wgpu::Backends::all()))
+            .into_iter()
+            .next()
+            .unwrap();
     let device =
         futures_lite::future::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
             .unwrap()

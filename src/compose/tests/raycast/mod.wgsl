@@ -1,3 +1,5 @@
+enable wgpu_ray_query;
+
 #define_import_path test_module
 
 @group(0) @binding(0) var tlas: acceleration_structure;
