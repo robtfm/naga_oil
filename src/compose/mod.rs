@@ -1836,8 +1836,8 @@ impl Composer {
                 early_depth_test: ep.early_depth_test,
                 workgroup_size: ep.workgroup_size,
                 workgroup_size_overrides: ep.workgroup_size_overrides,
-                mesh_info: None,
-                task_payload: None,
+                mesh_info: ep.mesh_info.clone(),
+                task_payload: ep.task_payload,
             });
         }
         let mut naga_module = naga::Module {

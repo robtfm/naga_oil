@@ -908,8 +908,8 @@ impl<'a> DerivedModule<'a> {
                 workgroup_size: ep.workgroup_size,
                 function: self.localize_function(&ep.function),
                 workgroup_size_overrides: ep.workgroup_size_overrides,
-                mesh_info: None,
-                task_payload: None,
+                mesh_info: ep.mesh_info.clone(),
+                task_payload: ep.task_payload,
             })
             .collect();
 
