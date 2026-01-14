@@ -1389,7 +1389,17 @@ impl Composer {
             true,
             &preprocessed_source,
             imports,
-            None,
+            if cfg!(feature = "override_enable_ray_query") {
+                Some(WgslDirectives {
+                    enables: vec![EnableDirective {
+                        extensions: vec!["wgpu_ray_query".to_string()],
+                        source_location: 0,
+                    }],
+                    ..Default::default()
+                })
+            } else {
+                None
+            },
         )
         .map_err(|err| err.into())
     }
