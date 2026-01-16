@@ -406,7 +406,6 @@ impl FunctionReq {
                 }
             }
             (Statement::Kill, _) => Some(Statement::Kill),
-            // (Statement::Barrier(b), _) => Some(Statement::Barrier(*b)),
             (Statement::ControlBarrier(b), _) => Some(Statement::ControlBarrier(*b)),
             (Statement::MemoryBarrier(b), _) => Some(Statement::MemoryBarrier(*b)),
             (
