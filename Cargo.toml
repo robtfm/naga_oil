@@ -16,8 +16,6 @@ glsl = ["naga/glsl-in", "naga/glsl-out"]
 override_any = []
 prune = []
 allow_deprecated = []
-# forces composable modules to include "enable wgpu_ray_query"
-override_enable_ray_query = []
 
 [dependencies]
 naga = { version = "28", features = ["wgsl-in", "wgsl-out", "termcolor"] }

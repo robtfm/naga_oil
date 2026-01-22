@@ -1298,7 +1298,6 @@ mod test {
         output_eq!(wgsl, "tests/expected/atomics.txt");
     }
 
-    #[cfg(feature = "override_enable_ray_query")]
     #[test]
     fn test_raycasts() {
         let mut composer =
