@@ -275,6 +275,8 @@ pub struct ComposableModuleDefinition {
     modules: HashMap<ModuleKey, ComposableModule>,
     // used in spans when this module is included
     module_index: usize,
+    // any directives used in this module
+    wgsl_directives: WgslDirectives,
 }
 
 impl ComposableModuleDefinition {
@@ -533,6 +535,8 @@ impl Composer {
                     early_depth_test: None,
                     workgroup_size: [0, 0, 0],
                     workgroup_size_overrides: None,
+                    mesh_info: None,
+                    task_payload: None,
                 };
 
                 naga_module.entry_points.push(ep);
@@ -583,17 +587,12 @@ impl Composer {
         language: ShaderLanguage,
         imports: &[ImportDefinition],
         shader_defs: &HashMap<String, ShaderDefValue>,
-        wgsl_directives: Option<WgslDirectives>,
+        wgsl_directives: &WgslDirectives,
     ) -> Result<IrBuildResult, ComposerError> {
         debug!("creating IR for {} with defs: {:?}", name, shader_defs);
 
-        let mut wgsl_string = String::new();
-        if let Some(wgsl_directives) = &wgsl_directives {
-            trace!("adding WGSL directives for {}", name);
-            wgsl_string = wgsl_directives.to_wgsl_string();
-        }
         let mut module_string = match language {
-            ShaderLanguage::Wgsl => wgsl_string,
+            ShaderLanguage::Wgsl => wgsl_directives.to_wgsl_string(),
             #[cfg(feature = "glsl")]
             ShaderLanguage::Glsl => String::from("#version 450\n"),
         };
@@ -851,7 +850,6 @@ impl Composer {
         demote_entrypoints: bool,
         source: &str,
         imports: Vec<ImportDefWithOffset>,
-        wgsl_directives: Option<WgslDirectives>,
     ) -> Result<ComposableModule, ComposerError> {
         let mut imports: Vec<_> = imports
             .into_iter()
@@ -985,7 +983,7 @@ impl Composer {
             module_definition.language,
             &imports,
             shader_defs,
-            wgsl_directives,
+            &module_definition.wgsl_directives,
         )?;
 
         // from here on errors need to be reported using the modified source with start_offset
@@ -1387,7 +1385,6 @@ impl Composer {
             true,
             &preprocessed_source,
             imports,
-            None,
         )
         .map_err(|err| err.into())
     }
@@ -1532,6 +1529,7 @@ impl Composer {
             mut imports,
             mut effective_defs,
             cleaned_source,
+            wgsl_directives,
             ..
         } = self
             .preprocessor
@@ -1617,6 +1615,7 @@ impl Composer {
             shader_defs,
             module_index,
             modules: Default::default(),
+            wgsl_directives,
         };
 
         // invalidate dependent modules if this module already exists
@@ -1763,6 +1762,7 @@ impl Composer {
             all_imports: Default::default(),
             shader_defs: Default::default(),
             modules: Default::default(),
+            wgsl_directives,
         };
 
         let PreprocessOutput {
@@ -1789,7 +1789,6 @@ impl Composer {
                 false,
                 &preprocessed_source,
                 imports,
-                Some(wgsl_directives),
             )
             .map_err(|e| ComposerError {
                 inner: e.inner,
@@ -1834,6 +1833,8 @@ impl Composer {
                 early_depth_test: ep.early_depth_test,
                 workgroup_size: ep.workgroup_size,
                 workgroup_size_overrides: ep.workgroup_size_overrides,
+                mesh_info: ep.mesh_info.clone(),
+                task_payload: ep.task_payload,
             });
         }
         let mut naga_module = naga::Module {

@@ -83,6 +83,7 @@ impl FunctionReq {
             expressions,
             named_expressions,
             body,
+            diagnostic_filter_leaf: func.diagnostic_filter_leaf,
         }
     }
 
@@ -149,6 +150,7 @@ impl FunctionReq {
                 offset,
                 level,
                 depth_ref,
+                clamp_to_edge,
             } => Expression::ImageSample {
                 image: expr_map[image],
                 sampler: expr_map[sampler],
@@ -166,6 +168,7 @@ impl FunctionReq {
                     },
                 },
                 depth_ref: depth_ref.map(|e| expr_map[&e]),
+                clamp_to_edge: *clamp_to_edge,
             },
             Expression::ImageLoad {
                 image,
@@ -251,6 +254,7 @@ impl FunctionReq {
             Expression::Override(_) => expr.clone(),
             Expression::SubgroupBallotResult => expr.clone(),
             Expression::SubgroupOperationResult { .. } => expr.clone(),
+            Expression::RayQueryVertexPositions { query, committed } => todo!(),
         }
     }
 
@@ -402,7 +406,18 @@ impl FunctionReq {
                 }
             }
             (Statement::Kill, _) => Some(Statement::Kill),
-            (Statement::Barrier(b), _) => Some(Statement::Barrier(*b)),
+            (Statement::ControlBarrier(b), _) => Some(Statement::ControlBarrier(*b)),
+            (Statement::MemoryBarrier(b), _) => Some(Statement::MemoryBarrier(*b)),
+            (
+                Statement::ImageAtomic {
+                    image,
+                    coordinate,
+                    array_index,
+                    fun,
+                    value,
+                },
+                _,
+            ) => todo!(),
             (Statement::Store { pointer, value }, StatementReq::Store(b)) => {
                 if !b {
                     return None;
@@ -1271,6 +1286,7 @@ impl<'a> Pruner<'a> {
                 offset: _offset,
                 level,
                 depth_ref,
+                clamp_to_edge,
             } => {
                 self.add_expression(function, func_req, context, *image, &PartReq::All);
                 self.add_expression(function, func_req, context, *sampler, &PartReq::All);
@@ -1384,6 +1400,7 @@ impl<'a> Pruner<'a> {
             Expression::SubgroupOperationResult { .. } => {
                 // nothing, handled by the statement
             }
+            Expression::RayQueryVertexPositions { query, committed } => todo!(),
         }
 
         func_req.exprs_required.insert(h_expr, part.clone());
@@ -1532,7 +1549,15 @@ impl<'a> Pruner<'a> {
                 Return(break_required)
             }
             Statement::Kill => Kill(),
-            Statement::Barrier(_) => Barrier(),
+            Statement::ControlBarrier(barrier) => Barrier(),
+            Statement::MemoryBarrier(barrier) => Barrier(),
+            Statement::ImageAtomic {
+                image,
+                coordinate,
+                array_index,
+                fun,
+                value,
+            } => todo!(),
             Statement::Store { pointer, value } => {
                 let var_ref = Self::resolve_var(function, *pointer, Vec::default());
                 let required = self.store_required(context, &var_ref);
@@ -1892,6 +1917,9 @@ impl<'a> Pruner<'a> {
                     early_depth_test: ep.early_depth_test,
                     workgroup_size: ep.workgroup_size,
                     function: mapped_f,
+                    mesh_info: None,
+                    task_payload: None,
+                    workgroup_size_overrides: None,
                 };
                 entry_points.push(new_ep);
             }
