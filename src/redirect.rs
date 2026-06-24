@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
+use indexmap::IndexMap;
 use naga::{Block, Expression, Function, Handle, Module, Statement};
 use thiserror::Error;
 
@@ -180,8 +181,14 @@ impl Redirector {
     }
 
     pub fn into_module(self) -> Result<naga::Module, RedirectError> {
-        // reorder functions so that dependents come first
-        let mut requirements: HashMap<_, _> = self
+        // reorder functions so that dependents come first.
+        // IndexMap (not HashMap) so the toposort emits same-level functions in
+        // the deterministic function-arena order. With a HashMap the retain()
+        // below walks in random per-process iteration order, producing a
+        // different (but still valid) emission order each run; on wasm the map
+        // is reseeded per page-load, so composed shaders — and therefore GPU
+        // pipeline-cache keys — never stabilise.
+        let mut requirements: IndexMap<_, _> = self
             .module
             .functions
             .iter()
